@@ -1,0 +1,11 @@
+---
+redmine_path: "/home/ubuntu/redmine"
+
+db_host: "127.0.0.1"
+db_name: "redmine"
+db_username: "redmine"
+db_password: "1nsecure"
+
+redmine_version: "4.0"
+redmine_lang: "en"
+

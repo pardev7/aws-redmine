@@ -1,0 +1,22 @@
+---
+region: us-east-1
+instance_type: t2.micro
+ami: ami-0b69ea66ff7391e80  # Ubuntu 16.04 LTS
+aws_secret_key: CCQKIjdIX9YPEI2src5byuGcj5R16JbrMq9toEvy
+aws_access_key: AKIAVNKMUHNGHVUBPTW5
+vpc_cidr: 192.168.0.0/24
+vpc_name: "Ansible VPC"
+subnet_name: "Ansible Subnet"
+subnet_cidr: 192.168.0.0/26
+igw_name: "Traffic IGW"
+route_name: "Public"
+subnet_group: "rds_subnet"
+ec2_key_directory: "/home/avengers/"
+keypair_name: "ec2_keypair"
+mysql_user: admin
+mysql_password: 1nsecure
+database_subnets: []
+db_subnet:
+- { name: 'database-1', az: 'us-east-1a', cidr: '192.168.0.100/24' }
+- { name: 'database-2', az: 'us-east-1c', cidr: '192.168.0.101/24' }
+cdn_caller_reference: 20191011120000

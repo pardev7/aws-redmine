@@ -1,0 +1,27 @@
+---
+- name: Update all packages to the latest version
+  become: true
+  apt:
+    upgrade: dist
+    update_cache: yes
+  register: common_update
+  until: common_update is success
+  retries: 10
+  delay: 2
+
+- name: Install basic packages
+  become: true
+  apt:
+    name: ['curl', 'logrotate', 'apt-transport-https', 'ca-certificates', 'software-properties-common', 'vim', 'nano', 'mysql-client', 'python-pip']
+    state: present
+    update_cache: yes
+  register: common_install
+  until: common_install is success
+  retries: 10
+  delay: 2
+
+- name: Install PIP modules
+  pip:
+    name: "{{ item }}"
+  loop:
+    - PyMySQL

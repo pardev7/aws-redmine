@@ -1,0 +1,3 @@
+- name: Print CDN endpoint
+  debug:
+    msg: "{{ cdn.domain_name }}"

@@ -1,0 +1,167 @@
+---
+- name: Install Redmine pre-requisite packages
+  become: true
+  apt:
+    name: ['libmysqlclient-dev', 'libmagickcore-dev', 'libmagickwand-dev', 'imagemagick', 'g++', 'zlib1g-dev', 'libyaml-dev', 'libsqlite3-dev', 'sqlite3', 'autoconf', 'libgmp-dev', 'libgdbm-dev', 'libncurses5-dev', 'automake', 'libtool', 'bison', 'pkg-config', 'libffi-dev', 'libgmp-dev', 'libreadline6-dev', 'libssl-dev']
+    state: present
+    update_cache: yes
+  register: redmine_install
+  until: redmine_install is success
+  retries: 10
+  delay: 2
+  tags:
+    - skip_ansible_lint
+
+- name: Clone Redmine repository
+  git:
+    repo: https://github.com/redmine/redmine.git
+    dest: "{{ redmine_path }}"
+    version: "{{ redmine_version }}-stable"
+    accept_hostkey: yes
+    clone: yes
+    update: yes
+    force: yes
+
+- name: Install Bundler
+  become: true
+  gem:
+    name: bundler
+    state: present
+    user_install: no
+  register: bundler_install
+  until: bundler_install is success
+  retries: 10
+  delay: 2
+
+- name: Add local Gemfile
+  template:
+    src: Gemfile.local.j2
+    dest: "{{ redmine_path }}/Gemfile.local"
+
+- name: Copy remote config from example
+  copy:
+    src: "{{ redmine_path }}/config/configuration.yml.example"
+    dest: "{{ redmine_path }}/config/configuration.yml"
+    remote_src: yes
+
+- name: Add database config
+  template:
+    src: database.yml.j2
+    dest: "{{ redmine_path }}/config/database.yml"
+  notify:
+    - redmine restart
+
+- name: Create Redmine folders
+  file:
+    path: "{{ redmine_path }}/{{ item }}"
+    state: directory
+    owner: ubuntu
+    group: ubuntu
+    mode: 0755
+  with_items:
+    - "tmp/pids"
+    - "public/plugin_assets"
+    - "files"
+    - "log"
+
+- name: Install local gems
+  bundler:
+    executable: /usr/local/bin/bundler
+    gemfile: "{{ redmine_path }}/Gemfile.local"
+    chdir: "{{ redmine_path }}"
+  register: local_gem_install
+  until: local_gem_install is success
+  retries: 10
+  delay: 2
+
+- name: Install Redmine gems
+  bundler:
+    executable: /usr/local/bin/bundler
+    gemfile: "{{ redmine_path }}/Gemfile"
+    chdir: "{{ redmine_path }}"
+    extra_args: "--without development test postgresql sqlite"
+  register: gem_install
+  until: gem_install is success
+  retries: 10
+  delay: 2
+
+- name: Stat secret token file
+  stat:
+    path: "{{ redmine_path }}/config/initializers/secret_token.rb"
+  register:
+    secret_token_stat
+
+- name: Create Redmine database
+  mysql_db:
+    name: redmine
+    state: present
+    login_host: "{{ db_host }}"
+    login_port: 3306
+    login_user: "{{ mysql_user }}"
+    login_password: "{{ mysql_password }}"
+
+- name: Create Redmine user
+  mysql_user:
+    name: "{{ db_username }}"
+    password: "{{ db_password }}"
+    host: '%'
+    priv: 'redmine.*:ALL'
+    state: present
+    login_host: "{{ db_host }}"
+    login_port: 3306
+    login_user: "{{ mysql_user }}"
+    login_password: "{{ mysql_password }}"
+
+- name: Session store secret generation
+  shell: rake generate_secret_token
+  args:
+   chdir: "{{ redmine_path }}"
+   creates: "{{ redmine_path }}/config/initializers/secret_token.rb"
+  when: not secret_token_stat.stat.exists
+  tags:
+    - skip_ansible_lint
+
+# Redmine migrations are idempotent via shell execution
+- name: Database schema objects creation
+  environment:
+    RAILS_ENV: production
+  shell: rake db:migrate
+  args:
+   chdir: "{{ redmine_path }}"
+   creates: "/home/ubuntu/.ansible-creates-db-migrate"
+  tags:
+    - skip_ansible_lint
+
+- name: Database default data set
+  environment:
+    REDMINE_LANG: "{{ redmine_lang }}"
+    RAILS_ENV: production
+  shell: rake redmine:load_default_data
+  args:
+   chdir: "{{ redmine_path }}"
+   creates: /home/redmine/.ansible-creates-default-data
+  tags:
+    - skip_ansible_lint
+
+- name: Add Puma config file
+  template:
+    src: puma.rb.j2
+    dest: "{{ redmine_path }}/config/puma.rb"
+  notify:
+    - redmine restart
+
+- name: Add Redmine service
+  become: true
+  template:
+    src: etc/systemd/system/redmine.service.j2
+    dest: /etc/systemd/system/redmine.service
+  notify:
+    - redmine restart
+
+- name: Ensure Redmine service is started and enabled
+  become: true
+  systemd:
+    daemon-reload: true
+    name: redmine.service
+    state: started
+    enabled: true

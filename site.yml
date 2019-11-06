@@ -1,0 +1,76 @@
+---
+- name: Provision AWS infra
+  hosts: localhost
+  connection: local
+  gather_facts: false
+
+  roles:
+    - aws-infra
+
+  tasks:
+    - name: Add instances Public IPs to host group
+      add_host:
+        hostname: "{{ item.public_ip }}"
+        groupname: webservers
+      with_items: "{{ created_ec2.tagged_instances }}"
+      
+    - name: Touch host ssh fingerprints
+      shell: ssh-keyscan -t ecdsa {{ item.public_ip }}
+      with_items: "{{ created_ec2.tagged_instances }}"
+      register: host_key
+      changed_when: "'changed' in host_key.stdout"
+      tags:
+        - skip_ansible_lint
+
+    - name: Add Host Key
+      known_hosts:
+        key: "{{ item.public_ip }} ecdsa-sha2-nistp256 {{ host_key.results[0].stdout.split(' ')[2] }}"
+        name: "{{ item.public_ip }}"
+        state: present
+      with_items:
+        - "{{ webserver.tagged_instances }}"
+      delegate_to: localhost
+      
+
+    - name: Set RDS hostvars fact
+      set_fact:
+          rds_host: "{{ rds_db.instance.endpoint }}"
+      
+
+- name: Webserver Configuration
+  hosts: webservers
+  remote_user: ubuntu
+  gather_facts: false
+
+  pre_tasks:
+    - name: Install Python 2.7
+      become: true
+      raw: test -e /usr/bin/python || echo "CHANGED!!!" && (apt update && apt install -y python)
+      register: install_python
+      changed_when: '"CHANGED!!!" in install_python.stdout'
+      
+
+    - name: Gather Facts
+      setup: {}
+
+  roles:
+   - common
+   - role: redmine
+     db_host: "{{ hostvars['localhost']['rds_host'] }}"
+   - role: jdauphant.nginx
+     become: true
+     nginx_http_params:
+       - sendfile "on"
+       - access_log "/var/log/nginx/access.log"
+     nginx_sites:
+       redmine:
+        - listen 80
+        - server_name "{{ inventory_hostname }}"
+        - location / { proxy_pass http://localhost:9000/; include /etc/nginx/proxy_params; }
+     nginx_configs:
+       proxy:
+        - proxy_set_header X-Real-IP  $remote_addr
+        - proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for
+        - add_header Access-Control-Allow-Origin *
+        - add_header cloudfront-viewer-country $http_cloudfront_viewer_country
+        - add_header 'Access-Control-Expose-Headers' 'cloudfront-viewer-country'

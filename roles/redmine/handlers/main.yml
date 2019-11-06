@@ -1,0 +1,6 @@
+---
+- name: redmine restart
+  become: true
+  service:
+    name: redmine
+    state: restarted

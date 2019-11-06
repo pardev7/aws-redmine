@@ -1,0 +1,11 @@
+---
+- name: Install Ruby packages
+  become: true
+  apt:
+    name: ['ruby-full', 'ruby-dev', 'build-essential']
+    state: present
+    update_cache: yes
+  register: ruby_install
+  until: ruby_install is success
+  retries: 10
+  delay: 2

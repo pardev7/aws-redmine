@@ -1,0 +1,18 @@
+[Unit]
+Description=Redmine
+After=network.target
+
+[Service]
+Type=forking
+WorkingDirectory={{ redmine_path }}
+PIDFile={{ redmine_path }}/tmp/pids/puma.pid
+User=ubuntu
+Group=ubuntu
+
+ExecStart=/usr/local/bin/bundle exec puma --config {{ redmine_path }}/config/puma.rb
+ExecStop=/usr/local/bin/bundle exec pumactl -S {{ redmine_path }}/tmp/pids/puma.state stop
+ExecReload=/usr/local/bin/bundle exec pumactl -S {{ redmine_path }}/tmp/pids/puma.state restart
+Restart=always
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,3 @@
+# Create aws infra
+- import_tasks: aws-infra.yml
+ 
