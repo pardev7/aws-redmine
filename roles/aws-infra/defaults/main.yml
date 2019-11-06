@@ -2,8 +2,8 @@
 region: us-east-1
 instance_type: t2.micro
 ami: ami-0b69ea66ff7391e80  # Ubuntu 16.04 LTS
-aws_secret_key: CCQKIjdIX9YPEI2src5byuGcj5R16JbrMq9toEvy
-aws_access_key: AKIAVNKMUHNGHVUBPTW5
+aws_secret_key: 
+aws_access_key: 
 vpc_cidr: 192.168.0.0/24
 vpc_name: "Ansible VPC"
 subnet_name: "Ansible Subnet"

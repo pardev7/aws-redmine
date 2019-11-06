@@ -1,4 +1,4 @@
-reating AWS infrastructure and deploy redmine and mysql service on top of it
+Creating AWS infrastructure and deploy redmine and mysql service on top of it
 ### Project description properties and prerequisites
 
 This is playbook to deploy Redmine application on AWS.
@@ -24,15 +24,15 @@ the playbook ideally create the VPC, allocate the EC2 and RDS instances in that 
 
 ### Project structure
 
- [group_vars](./group_vars) -- Playbook variables folder
- [all.yml](./group_vars/all.yml) -- Playbook variables example
- [roles](./roles) -- Roles
- [common](./roles/common) -- Basic packages installation
- [aws-infra](./roles/aws-infra) -- AWS infrastructure create
- [ruby](./roles/ruby) -- Ruby packages installation
- [redmine](./roles/ruby) -- Redmine service deploy
- [jdauphant.nginx](./roles/jdauphant.nginx) -- Galaxy role for Nginx installation
- [site.yml](./site.yml) -- Main playbook to deploy all services
+* [group_vars](./group_vars) -- Playbook variables folder
+* [all.yml](./group_vars/all.yml) -- Playbook variables example
+* [roles](./roles) -- Roles
+* [common](./roles/common) -- Basic packages installation
+* [aws-infra](./roles/aws-infra) -- AWS infrastructure create
+* [ruby](./roles/ruby) -- Ruby packages installation
+* [redmine](./roles/ruby) -- Redmine service deploy
+* [jdauphant.nginx](./roles/jdauphant.nginx) -- Galaxy role for Nginx installation
+* [site.yml](./site.yml) -- Main playbook to deploy all services
 
 - Put your own AWS ssh key file (like 'EC2.pem') in the main folder, beside the playbook. File permissions should be '0600' otherwise playbook will fail.
 
@@ -53,4 +53,3 @@ ansible_ssh_private_key_file: <set your working AWS ssh key file name here for E
 - Run playbook to cleanup all created AWS services when needed and wait until it will be completed:
 
 - Go to AWS console - disable and then destroy the distribution, EC2, VPC, RDS after ur testing.
-
